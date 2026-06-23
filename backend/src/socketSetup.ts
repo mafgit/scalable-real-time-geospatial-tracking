@@ -2,7 +2,11 @@ import { Server, Socket } from "socket.io";
 import type http from "node:http";
 
 export default function socketSetup(httpServer: http.Server) {
-	const validRegions = new Set(["karachi", "lahore"]);
+	const validRegions = new Map([
+		["karachi", { lat: 24.861, lng: 66.9905 }],
+		["lahore", { lat: 31.582, lng: 74.3294 }],
+	]); // todo: send lat and long to frontend on join room
+	// todo: set radius after understanding about flow
 
 	const io = new Server(httpServer, {
 		cors: {
