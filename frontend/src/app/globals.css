@@ -3,6 +3,8 @@
 :root {
 	--background: #ffffff;
 	--foreground: #171717;
+	--primary: #7403f5;
+	--accent: #e7d000;
 }
 
 @theme inline {
@@ -10,6 +12,8 @@
 	--color-foreground: var(--foreground);
 	--font-sans: var(--font-geist-sans);
 	--font-mono: var(--font-geist-mono);
+	--color-primary: var(--primary);
+	--color-accent: var(--accent);
 }
 
 body {
@@ -20,8 +24,8 @@ body {
 
 button:disabled {
 	opacity: 0.5;
-    background: rgb(82, 82, 82);
-    color: rgb(223, 223, 223);
+	background: rgb(82, 82, 82);
+	color: rgb(223, 223, 223);
 }
 
 button:not(:disabled) {

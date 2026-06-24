@@ -16,6 +16,7 @@ export default function page() {
 	const [pickupCoord, setPickupCoord] = useState<LatLngObj>(null);
 	const [destCoord, setDestCoord] = useState<LatLngObj>(null);
 	const [userCoord, setUserCoord] = useState<LatLngObj>(null);
+	const [view, setView] = useState("ride");
 
 	const [drivers, setDrivers] = useState<DriverIdLatLng[]>([]); // to add/remove a marker to map
 	const seenDriverIds = useRef<Set<string>>(new Set()); // just to check if seen, otherwise add to driverIds, to prevent `if id in driverIds` O(n)
@@ -120,40 +121,72 @@ export default function page() {
 	const leafletMapRef = useRef<L.Map | null>(null);
 
 	return (
-		<div className="flex flex-wrap justify-center items-center flex-col gap-3 py-8 px-4">
-			<h3 className="text-3xl font-bold">
-				{step === 1
-					? "1. Click on pick-up location"
-					: step === 2
-						? "2. Click on drop-off location"
-						: "3. Waiting... (nothing will happen)"}
-			</h3>
-
-			<div className="flex gap-2">
-				<button
-					className="bg-red-500 text-white px-2 py-1 rounded-md"
-					disabled={step === 1}
-					onClick={() => moveToPrevStep(step)}
-				>
-					{step < 3 ? "Back" : "Cancel"}
-				</button>
-
-				{step < 3 && (
+		<div className="flex flex-wrap justify-center items-center flex-col w-full h-screen">
+			<div className="z-20 absolute left-1/2 -translate-x-1/2 top-[16px] w-[50%] bg-primary text-white py-2 px-4 rounded-md flex flex-wrap justify-between items-center gap-8 ">
+				<h1 className="text-lg font-semibold">Scalable Real-Time Geospatial Tracking</h1>
+				<div className="flex items-center justify-center bg-primary rounded-md overflow-hidden">
 					<button
-						className="bg-blue-500 text-white px-2 py-1 rounded-md"
-						disabled={
-							step > 3 ||
-							(step === 1 && !pickupCoord) ||
-							(step === 2 && !destCoord)
+						onClick={() => setView("ride")}
+						className={
+							"px-2 py-1 text-sm " +
+							(view === "ride"
+								? "bg-accent text-black"
+								: "opacity-90 bg-white text-black")
 						}
-						onClick={() => moveToNextStep(step)}
 					>
-						{step === 1 ? "Next" : "Confirm"}
+						Ride View
 					</button>
-				)}
+					<button
+						onClick={() => setView("global")}
+						className={
+							"px-2 py-1 text-sm " +
+							(view === "global"
+								? "bg-accent text-black"
+								: "opacity-90 bg-white text-black")
+						}
+					>
+						Global View
+					</button>
+				</div>
 			</div>
 
-			<div className="w-[100%] h-[500px] rounded-xl overflow-hidden">
+			<div className="z-20 absolute bottom-[16px] left-0 flex items-center justify-center w-full">
+				<div className="px-4 py-2 flex gap-2 justify-between flex-wrap text-white w-[95%] bg-primary rounded-md">
+					<h3 className="text-lg">
+						{step === 1
+							? "1. Click on pick-up location"
+							: step === 2
+								? "2. Click on drop-off location"
+								: "3. Waiting... (nothing will happen)"}
+					</h3>
+
+					<div className="flex gap-1">
+						<button
+							className="bg-red-500 text-white px-2 py-1 rounded-md"
+							disabled={step === 1}
+							onClick={() => moveToPrevStep(step)}
+						>
+							{step < 3 ? "Back" : "Cancel"}
+						</button>
+
+						{step < 3 && (
+							<button
+								className="bg-accent text-black px-2 py-1 rounded-md"
+								disabled={
+									step > 3 ||
+									(step === 1 && !pickupCoord) ||
+									(step === 2 && !destCoord)
+								}
+								onClick={() => moveToNextStep(step)}
+							>
+								{step === 1 ? "Next" : "Confirm"}
+							</button>
+						)}
+					</div>
+				</div>
+			</div>
+
+			<div className="w-[100%] h-[100%] z-10 rounded-xl overflow-hidden absolute">
 				<SelectionMapNoSSR
 					step={step}
 					userCoord={userCoord} // for map center
