@@ -20,6 +20,8 @@ body {
 
 button:disabled {
 	opacity: 0.5;
+    background: rgb(82, 82, 82);
+    color: rgb(223, 223, 223);
 }
 
 button:not(:disabled) {

@@ -1,5 +1,6 @@
 "use client";
-import { type LatLngObj } from "@/components/SelectionMap";
+import { DriverIdLatLng } from "@/types/DriverIdLatLng";
+import { LatLngObj } from "@/types/LatLngObj";
 import L from "leaflet";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
@@ -16,10 +17,9 @@ export default function page() {
 	const [destCoord, setDestCoord] = useState<LatLngObj>(null);
 	const [userCoord, setUserCoord] = useState<LatLngObj>(null);
 
-	const [driverIds, setDriverIds] = useState<string[]>([]); // to add/remove a marker to map
+	const [drivers, setDrivers] = useState<DriverIdLatLng[]>([]); // to add/remove a marker to map
 	const seenDriverIds = useRef<Set<string>>(new Set()); // just to check if seen, otherwise add to driverIds, to prevent `if id in driverIds` O(n)
 	const refMap = useRef<Map<string, L.Marker>>(new Map()); // driver ids state -> marker element map
-
 
 	useEffect(() => {
 		// -------------------- GET USER LOCATION ON LOAD -------------------------
@@ -41,7 +41,6 @@ export default function page() {
 		);
 	}, []);
 
-    
 	async function moveForwardToStep2(pickupCoord: LatLngObj) {
 		if (!socket.connected) socket.connect();
 
@@ -51,8 +50,11 @@ export default function page() {
 		);
 		const data = await res.json();
 		// todo: data.drivers is not an array of ids, but an array of objects
-		setDriverIds(data.drivers);
-		seenDriverIds.current = new Set(data.drivers);
+		console.log(data);
+		setDrivers(data.drivers);
+		seenDriverIds.current = new Set(
+			data.drivers.map((d: { driverId: string }) => d.driverId),
+		);
 
 		// websocket
 		socket.emit("join-frontends");
@@ -71,30 +73,31 @@ export default function page() {
 					}
 				} else {
 					seenDriverIds.current.add(data.driverId);
-					setDriverIds((prev) => [...prev, data.driverId]);
+					setDrivers((prev) => [...prev, data]);
 				}
 			},
 		);
+
+		setStep(2);
+		leafletMapRef.current?.setZoom(15);
 	}
 
-    function moveForwardToStep3(destCoord: LatLngObj) {
-        setStep(3);
-    }
-	
-    function moveBackToStep1() {
+	function moveForwardToStep3(destCoord: LatLngObj) {
+		setStep(3);
+	}
+
+	function moveBackToStep1() {
 		setStep(1);
 		seenDriverIds.current.clear();
 		refMap.current.clear();
 		setDestCoord(null);
-		setDriverIds([]);
+		setDrivers([]);
 		socket.emit("leave-frontends");
 		socket.off("driver-ping");
 	}
 
-
 	function moveBackToStep2() {
 		setStep(2);
-		setDestCoord(null);
 	}
 
 	function moveToNextStep(step: number) {
@@ -114,37 +117,43 @@ export default function page() {
 		else if (step === 2) moveBackToStep1();
 	}
 
+	const leafletMapRef = useRef<L.Map | null>(null);
+
 	return (
-		<div className="">
-			<h3>
+		<div className="flex flex-wrap justify-center items-center flex-col gap-3 py-8 px-4">
+			<h3 className="text-3xl font-bold">
 				{step === 1
-					? "Select your pickup point on the map"
+					? "1. Click on pick-up location"
 					: step === 2
-						? "Select your destination on the map"
-						: "Waiting... (nothing will happen)"}
+						? "2. Click on drop-off location"
+						: "3. Waiting... (nothing will happen)"}
 			</h3>
 
-			<>
+			<div className="flex gap-2">
 				<button
+					className="bg-red-500 text-white px-2 py-1 rounded-md"
 					disabled={step === 1}
 					onClick={() => moveToPrevStep(step)}
 				>
 					{step < 3 ? "Back" : "Cancel"}
 				</button>
 
-				<button
-					disabled={
-						step > 3 ||
-						(step === 1 && !pickupCoord) ||
-						(step === 2 && !destCoord)
-					}
-					onClick={() => moveToNextStep(step)}
-				>
-					{step === 1 ? "Next" : "Confirm"}
-				</button>
-			</>
+				{step < 3 && (
+					<button
+						className="bg-blue-500 text-white px-2 py-1 rounded-md"
+						disabled={
+							step > 3 ||
+							(step === 1 && !pickupCoord) ||
+							(step === 2 && !destCoord)
+						}
+						onClick={() => moveToNextStep(step)}
+					>
+						{step === 1 ? "Next" : "Confirm"}
+					</button>
+				)}
+			</div>
 
-			<div className="w-[300px] h-[300px] bg-black">
+			<div className="w-[100%] h-[500px] rounded-xl overflow-hidden">
 				<SelectionMapNoSSR
 					step={step}
 					userCoord={userCoord} // for map center
@@ -153,7 +162,8 @@ export default function page() {
 					pickupCoord={pickupCoord}
 					destCoord={destCoord}
 					refMap={refMap}
-					driverIds={driverIds}
+					drivers={drivers}
+					leafletMapRef={leafletMapRef}
 				/>
 			</div>
 		</div>

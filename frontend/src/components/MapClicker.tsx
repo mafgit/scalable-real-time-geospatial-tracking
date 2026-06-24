@@ -1,5 +1,5 @@
+import { LatLngObj } from "@/types/LatLngObj";
 import { Marker, Popup, useMapEvents } from "react-leaflet";
-import { LatLngObj } from "./SelectionMap";
 
 export default function MapClicker({
 	step,
@@ -15,6 +15,7 @@ export default function MapClicker({
 	step: number;
 }) {
 	const map = useMapEvents({
+		// todo: closure of step variable might be an issue later
 		click: (e) => {
 			const { lat, lng } = e.latlng;
 			if (step === 1) {

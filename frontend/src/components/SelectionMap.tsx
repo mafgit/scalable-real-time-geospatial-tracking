@@ -1,9 +1,18 @@
 "use client";
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import {
+	Circle,
+	MapContainer,
+	Marker,
+	Polygon,
+	Popup,
+	TileLayer,
+} from "react-leaflet";
 import L from "leaflet";
 import MapClicker from "./MapClicker";
 import { RefObject, useEffect } from "react";
 import "leaflet/dist/leaflet.css";
+import { LatLngObj } from "@/types/LatLngObj";
+import { DriverIdLatLng } from "@/types/DriverIdLatLng";
 
 // @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl;
@@ -14,11 +23,6 @@ L.Icon.Default.mergeOptions({
 	shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
 
-export type LatLngObj = {
-	lat: number;
-	lng: number;
-} | null;
-
 export default function SelectionMap({
 	userCoord,
 	pickupCoord,
@@ -27,7 +31,8 @@ export default function SelectionMap({
 	setDestCoord,
 	step,
 	refMap,
-	driverIds,
+	drivers,
+	leafletMapRef,
 }: {
 	userCoord: LatLngObj;
 	pickupCoord: LatLngObj;
@@ -36,10 +41,12 @@ export default function SelectionMap({
 	setDestCoord: React.Dispatch<React.SetStateAction<LatLngObj>>;
 	step: number;
 	refMap: RefObject<Map<string, L.Marker>>;
-	driverIds: string[];
+	drivers: DriverIdLatLng[];
+	leafletMapRef: RefObject<L.Map | null>;
 }) {
-    return userCoord ? (
+	return userCoord ? (
 		<MapContainer
+			ref={leafletMapRef}
 			center={userCoord}
 			zoom={26}
 			style={{ width: "100%", height: "100%" }}
@@ -57,22 +64,33 @@ export default function SelectionMap({
 				step={step}
 			/>
 
+			{step > 1 && pickupCoord && (
+				<Circle
+					center={[pickupCoord.lat, pickupCoord.lng]}
+					radius={300}
+				/>
+			)}
+
+			{step > 2 && pickupCoord && destCoord && (
+				<Polygon positions={[pickupCoord, destCoord]} />
+			)}
+
 			{step > 1 ? (
-				driverIds.map((v) => (
+				drivers.map((d: DriverIdLatLng) => (
 					<Marker
-						key={v}
+						key={d.driverId}
 						ref={(element) => {
 							if (element) {
 								// mounted
-								refMap.current.set(v, element);
+								refMap.current.set(d.driverId, element);
 							} else {
 								// unmounted
-								refMap.current.delete(v);
+								refMap.current.delete(d.driverId);
 							}
 						}}
 						position={[24, 66]} // todo: remove fake position
 					>
-						<Popup>{v}</Popup>
+						<Popup>Driver ID: {d.driverId}</Popup>
 					</Marker>
 				))
 			) : (
@@ -80,6 +98,6 @@ export default function SelectionMap({
 			)}
 		</MapContainer>
 	) : (
-		<p>Error getting user location</p>
+		<p>Getting user location...</p>
 	);
 }
