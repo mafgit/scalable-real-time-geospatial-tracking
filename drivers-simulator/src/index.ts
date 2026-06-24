@@ -1,11 +1,11 @@
 import { io, type Socket } from "socket.io-client";
 
 // const socket = socket.on("connect", () => {
-// 	console.log("Device simulator connected to backend websocket");
+// 	console.log("Driver simulator connected to backend websocket");
 // });
 
 // socket.on("disconnect", () => {
-// 	console.log("Device simulator disconnected from backend websocket");
+// 	console.log("Driver simulator disconnected from backend websocket");
 // });
 
 const validRegions = {
@@ -15,7 +15,7 @@ const validRegions = {
 const validRegionIds = Object.keys(validRegions);
 const numValidRegions = validRegionIds.length;
 
-let devices: Record<
+let drivers: Record<
 	string,
 	{
 		lat: number;
@@ -28,68 +28,68 @@ let devices: Record<
 process.on("SIGINT", () => {
 	console.log("Keyboard interrupt detected");
 
-	Object.values(devices).forEach((d) => {
+	Object.values(drivers).forEach((d) => {
 		if (d.socket.connected) d.socket.disconnect();
 	});
 
 	process.exit(0);
 });
 
-async function simulate(numDevices: number, seconds: number) {
-	console.log(`Simulating ${numDevices} devices`);
+async function simulate(numDrivers: number, seconds: number) {
+	console.log(`Simulating ${numDrivers} drivers`);
 
-	devices = {};
+	drivers = {};
 
-	let device;
+	let driver;
 	for (let t = 0; t < seconds; t++) {
 		if ((t + 1) % 5 === 0) console.log(`\nStep ${t + 1}/${seconds}`);
 
-		for (let d = 0; d < numDevices; d++) {
-			const deviceId = "device-" + d;
+		for (let d = 0; d < numDrivers; d++) {
+			const driverId = "driver-" + d;
 
-			if (!(deviceId in devices)) {
+			if (!(driverId in drivers)) {
 				const dx = Math.random() * 0.3 - 0.15; // -0.15 to 0.15
 				const dy = Math.random() * 0.3 - 0.15;
 				const { regionId, lat, lng } = getRandomRegionAndCenter();
 				const newLat = lat + dx;
 				const newLng = lng + dy;
 
-				devices[deviceId] = {
+				drivers[driverId] = {
 					lat: newLat,
 					lng: newLng,
 					regionId: regionId,
 					socket: io("http://localhost:5000", {
-						query: { deviceId: deviceId },
+						query: { driverId: driverId },
 						forceNew: true,
 						multiplex: false,
 					}),
 				};
 
-				device = devices[deviceId];
-				// console.log(device.regionId);
+				driver = drivers[driverId];
+				// console.log(driver.regionId);
 			} else {
-				device = devices[deviceId];
+				driver = drivers[driverId];
 				const dx = Math.random() * (0.00013 - 0.0001) + 0.0001;
 				const dy = Math.random() * (0.00013 - 0.0001) + 0.0001;
 
-				const newLat = device.lat + (Math.random() < 0.5 ? -1 : 1) * dx;
-				const newLng = device.lng + (Math.random() < 0.5 ? -1 : 1) * dx;
-				device.lat = newLat;
-				device.lng = newLng;
+				const newLat = driver.lat + (Math.random() < 0.5 ? -1 : 1) * dx;
+				const newLng = driver.lng + (Math.random() < 0.5 ? -1 : 1) * dx;
+				driver.lat = newLat;
+				driver.lng = newLng;
 			}
 
-			device.socket.emit("driver-ping", {
-				deviceId: deviceId,
-				regionId: devices[deviceId].regionId,
-				lat: devices[deviceId].lat,
-				lng: devices[deviceId].lng,
+			driver.socket.emit("driver-ping", {
+				driverId: driverId,
+				regionId: drivers[driverId].regionId,
+				lat: drivers[driverId].lat,
+				lng: drivers[driverId].lng,
 			});
 		}
 
 		await delay(Math.random() * 2000);
 	}
 
-	Object.values(devices).forEach((d) => {
+	Object.values(drivers).forEach((d) => {
 		if (d.socket.connected) d.socket.disconnect();
 	});
 }

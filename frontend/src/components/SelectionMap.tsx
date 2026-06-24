@@ -1,8 +1,8 @@
 "use client";
-import { MapContainer, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import MapClicker from "./MapClicker";
-import { useEffect } from "react";
+import { RefObject, useEffect } from "react";
 import "leaflet/dist/leaflet.css";
 
 // @ts-ignore
@@ -26,6 +26,8 @@ export default function SelectionMap({
 	setPickupCoord,
 	setDestCoord,
 	step,
+	refMap,
+	driverIds,
 }: {
 	userCoord: LatLngObj;
 	pickupCoord: LatLngObj;
@@ -33,8 +35,10 @@ export default function SelectionMap({
 	setPickupCoord: React.Dispatch<React.SetStateAction<LatLngObj>>;
 	setDestCoord: React.Dispatch<React.SetStateAction<LatLngObj>>;
 	step: number;
+	refMap: RefObject<Map<string, L.Marker>>;
+	driverIds: string[];
 }) {
-	return userCoord ? (
+    return userCoord ? (
 		<MapContainer
 			center={userCoord}
 			zoom={26}
@@ -52,6 +56,28 @@ export default function SelectionMap({
 				setPickupCoord={setPickupCoord}
 				step={step}
 			/>
+
+			{step > 1 ? (
+				driverIds.map((v) => (
+					<Marker
+						key={v}
+						ref={(element) => {
+							if (element) {
+								// mounted
+								refMap.current.set(v, element);
+							} else {
+								// unmounted
+								refMap.current.delete(v);
+							}
+						}}
+						position={[24, 66]} // todo: remove fake position
+					>
+						<Popup>{v}</Popup>
+					</Marker>
+				))
+			) : (
+				<></>
+			)}
 		</MapContainer>
 	) : (
 		<p>Error getting user location</p>

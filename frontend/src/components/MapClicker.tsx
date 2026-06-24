@@ -18,7 +18,14 @@ export default function MapClicker({
 		click: (e) => {
 			const { lat, lng } = e.latlng;
 			if (step === 1) {
-				setPickupCoord({ lat, lng });
+				if (
+					!pickupCoord ||
+					pickupCoord.lat !== lat ||
+					pickupCoord.lng !== lng
+				) {
+					setPickupCoord({ lat, lng });
+					// todo: trigger query to backend for redis radius
+				}
 			} else if (step === 2) {
 				setDestCoord({ lat, lng });
 			}
