@@ -1,10 +1,22 @@
+import { ViewType } from "@/types/ViewType";
+
 export default function RidePageTop({
 	view,
 	setView,
 }: {
-	view: string;
-	setView: React.Dispatch<React.SetStateAction<string>>;
+	view: ViewType;
+	setView: React.Dispatch<React.SetStateAction<ViewType>>;
 }) {
+	function changeViewToGlobal() {
+		if (view === "global") return;
+		setView("global");
+	}
+
+	function changeViewToRide() {
+		if (view === "ride") return;
+		setView("ride");
+	}
+
 	return (
 		<>
 			<h1 className="text-md font-semibold bg-primary/85 text-white py-2 px-4 absolute left-[16px] top-[16px] rounded-lg z-20">
@@ -13,7 +25,7 @@ export default function RidePageTop({
 
 			<div className="flex absolute top-[16px] right-[16px] z-20 items-center justify-center bg-primary rounded-md overflow-hidden bg-white/85 p-0.5">
 				<button
-					onClick={() => setView("ride")}
+					onClick={changeViewToRide}
 					className={
 						"px-2 py-1 text-sm rounded-l-md " +
 						(view === "ride"
@@ -24,7 +36,7 @@ export default function RidePageTop({
 					Ride View
 				</button>
 				<button
-					onClick={() => setView("global")}
+					onClick={changeViewToGlobal}
 					className={
 						"px-2 py-1 text-sm rounded-r-md " +
 						(view === "global"

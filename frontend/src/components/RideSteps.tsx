@@ -1,9 +1,11 @@
 import { socket } from "@/app/constants/socket";
 import { DriverIdLatLng } from "@/types/DriverIdLatLng";
 import { LatLngObj } from "@/types/LatLngObj";
-import { RefObject } from "react";
+import { ViewType } from "@/types/ViewType";
+import { RefObject, useCallback } from "react";
 
 export default function RideSteps({
+	view,
 	step,
 	setStep,
 	pickupCoord,
@@ -16,6 +18,7 @@ export default function RideSteps({
 	setDestCoord,
 	setPickupCoord,
 }: {
+	view: ViewType;
 	step: number;
 	setStep: React.Dispatch<React.SetStateAction<number>>;
 	drivers: DriverIdLatLng[];
@@ -28,92 +31,80 @@ export default function RideSteps({
 	setDestCoord: React.Dispatch<React.SetStateAction<LatLngObj | null>>;
 	setPickupCoord: React.Dispatch<React.SetStateAction<LatLngObj | null>>;
 }) {
-	function moveToNextStep(step: number) {
-		if (step === 1) {
-			if (pickupCoord) {
-				moveForwardToStep2(pickupCoord);
-			}
-		} else if (step === 2) {
-			if (destCoord) {
-				moveForwardToStep3(destCoord);
-			}
-		}
-	}
+	const moveForwardToStep2 = useCallback(
+		async (pickupCoord: LatLngObj) => {
+			if (!socket.connected) socket.connect();
 
-	function moveToPrevStep(step: number) {
-		if (step === 3) moveBackToStep2();
-		else if (step === 2) moveBackToStep1();
-	}
+			// initial getting of drivers
+			const res = await fetch(
+				`http://localhost:5000/drivers/nearby?lat=${pickupCoord!.lat}&lng=${pickupCoord!.lng}`,
+			);
+			const data = await res.json();
+			console.log(data);
+			setDrivers(
+				Object.entries(data.drivers).map((x) => ({
+					...(x[1] as LatLngObj),
+					driverId: x[0],
+				})),
+			);
+			seenDriverIds.current = new Set(Object.keys(data.drivers));
 
-	async function moveForwardToStep2(pickupCoord: LatLngObj) {
-		if (!socket.connected) socket.connect();
+			// websocket
+			socket.emit("join-frontends");
 
-		// initial getting of drivers
-		const res = await fetch(
-			`http://localhost:5000/drivers/nearby?lat=${pickupCoord!.lat}&lng=${pickupCoord!.lng}`,
-		);
-		const data = await res.json();
-		console.log(data);
-		setDrivers(
-			Object.entries(data.drivers).map((x) => ({
-				...(x[1] as LatLngObj),
-				driverId: x[0],
-			})),
-		);
-		seenDriverIds.current = new Set(Object.keys(data.drivers));
+			socket.on(
+				"driver-ping-batch",
+				(batch: Record<string, LatLngObj>, expired: string[]) => {
+					// todo: frontend filter based on radius because it receives drivers of full region
+					console.log("Received driver-ping-batch");
 
-		// websocket
-		socket.emit("join-frontends");
+					let oldDrivers = [...drivers]; // copy
+					let changeState = false; // just a flag whether to call setDrivers([]) to avoid setting state again if not changed
 
-		socket.on(
-			"driver-ping-batch",
-			(batch: Record<string, LatLngObj>, expired: string[]) => {
-				// todo: frontend filter based on radius because it receives drivers of full region
-				console.log("Received driver-ping-batch");
-
-				const keys = Object.keys(batch);
-				let oldDrivers = [...drivers]; // copy
-				let changeState = false; // just a flag whether to call setDrivers([]) to avoid setting state again if not changed
-
-				if (expired) {
-					const expiredSet = new Set(expired);
-					oldDrivers = oldDrivers.filter((d) => {
-						if (!expiredSet.has(d.driverId)) {
-							return true;
-						} else {
-							changeState = true;
-							return false;
-						}
-					});
-				}
-
-				for (const k of keys) {
-					if (seenDriverIds.current.has(k)) {
-						const marker = refMap.current.get(k);
-
-						if (marker) {
-							marker.setLatLng([batch[k].lat, batch[k].lng]);
-						}
-					} else {
-						seenDriverIds.current.add(k);
-						oldDrivers.push({ ...batch[k], driverId: k });
-						changeState = true;
+					if (expired) {
+						const expiredSet = new Set(expired);
+						oldDrivers = oldDrivers.filter((d) => {
+							if (!expiredSet.has(d.driverId)) {
+								return true;
+							} else {
+								changeState = true;
+								return false;
+							}
+						});
 					}
-				}
 
-				if (changeState) setDrivers(oldDrivers);
-			},
-		);
+					for (const key in batch) {
+						if (seenDriverIds.current.has(key)) {
+							const marker = refMap.current.get(key);
 
-		setStep(2);
-		leafletMapRef.current?.setZoom(15);
-	}
+							if (marker) {
+								marker.setLatLng([
+									batch[key].lat,
+									batch[key].lng,
+								]);
+							}
+						} else {
+							seenDriverIds.current.add(key);
+							oldDrivers.push({ ...batch[key], driverId: key });
+							changeState = true;
+						}
+					}
+
+					if (changeState) setDrivers(oldDrivers);
+				},
+			);
+
+			setStep(2);
+			leafletMapRef.current?.setZoom(15);
+		},
+		[drivers],
+	);
 
 	function moveForwardToStep3(destCoord: LatLngObj) {
 		setStep(3);
 	}
 
-	function moveBackToStep1() {
+	const moveBackToStep1 = useCallback(() => {
 		setStep(1);
 		seenDriverIds.current.clear();
 		refMap.current.clear();
@@ -121,14 +112,42 @@ export default function RideSteps({
 		setDrivers([]);
 		socket.emit("leave-frontends");
 		socket.off("driver-ping");
-	}
+	}, []);
 
-	function moveBackToStep2() {
+	const moveToNextStep = useCallback(
+		(step: number) => {
+			if (step === 1) {
+				if (pickupCoord) {
+					moveForwardToStep2(pickupCoord);
+				}
+			} else if (step === 2) {
+				if (destCoord) {
+					moveForwardToStep3(destCoord);
+				}
+			}
+		},
+		[pickupCoord, destCoord, moveForwardToStep2, moveForwardToStep3],
+	);
+
+	const moveBackToStep2 = useCallback(() => {
 		setStep(2);
-	}
+	}, []);
+
+	const moveToPrevStep = useCallback(
+		(step: number) => {
+			if (step === 3) moveBackToStep2();
+			else if (step === 2) moveBackToStep1();
+		},
+		[moveBackToStep2, moveBackToStep1],
+	);
 
 	return (
-		<div className="z-20 absolute bottom-[16px] left-0 flex items-center justify-center w-full">
+		<div
+			className={
+				"z-20 absolute bottom-[16px] left-0 flex items-center justify-center w-full transform duration-300 " +
+				(view === "global" ? "translate-y-30" : "translate-y-0")
+			}
+		>
 			<div className="px-4 py-2 items-center flex gap-2 justify-between flex-wrap text-white w-[95%] bg-primary/85 rounded-md">
 				<h3 className="text-md  ">
 					<span className="text-sm mr-1">{step}.</span>

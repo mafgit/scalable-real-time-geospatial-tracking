@@ -14,6 +14,7 @@ import "leaflet/dist/leaflet.css";
 import { LatLngObj } from "@/types/LatLngObj";
 import { DriverIdLatLng } from "@/types/DriverIdLatLng";
 import { vehicleIcon } from "@/app/constants/leafletIcons";
+import { ViewType } from "@/types/ViewType";
 
 // @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl;
@@ -25,6 +26,7 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function SelectionMap({
+	view,
 	userCoord,
 	pickupCoord,
 	destCoord,
@@ -35,6 +37,7 @@ export default function SelectionMap({
 	drivers,
 	leafletMapRef,
 }: {
+	view: ViewType;
 	userCoord: LatLngObj | null;
 	pickupCoord: LatLngObj | null;
 	destCoord: LatLngObj | null;
@@ -51,36 +54,42 @@ export default function SelectionMap({
 			center={userCoord}
 			zoom={26}
 			zoomControl={false}
-			style={{ width: "100%", height: "100%" }}
+			style={{ width: "100%", height: "100%", zIndex: 10 }}
 		>
 			<TileLayer
 				attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 				url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 			/>
 
-			<MapClicker
-				destCoord={destCoord}
-				pickupCoord={pickupCoord}
-				setDestCoord={setDestCoord}
-				setPickupCoord={setPickupCoord}
-				step={step}
-			/>
+			{view === "ride" ? (
+				<>
+					<MapClicker
+						destCoord={destCoord}
+						pickupCoord={pickupCoord}
+						setDestCoord={setDestCoord}
+						setPickupCoord={setPickupCoord}
+						step={step}
+					/>
 
-			{step > 1 && pickupCoord && (
-				<Circle
-					center={[pickupCoord.lat, pickupCoord.lng]}
-					radius={1500}
-				/>
-			)}
+					{step > 1 && pickupCoord && (
+						<Circle
+							center={[pickupCoord.lat, pickupCoord.lng]}
+							radius={1500}
+						/>
+					)}
 
-			{step > 2 && pickupCoord && destCoord && (
-				<Polygon
-					positions={[pickupCoord, destCoord]}
-					weight={4}
-					dashArray={[1, 10]}
-				>
-					<Popup>No info</Popup>
-				</Polygon>
+					{step > 2 && pickupCoord && destCoord && (
+						<Polygon
+							positions={[pickupCoord, destCoord]}
+							weight={4}
+							dashArray={[1, 10]}
+						>
+							<Popup>No info</Popup>
+						</Polygon>
+					)}
+				</>
+			) : (
+				<></>
 			)}
 
 			{step > 1 ? (
