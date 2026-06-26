@@ -1,19 +1,14 @@
+import { useMyStore } from "@/store/useMyStore";
 import { LatLngObj } from "@/types/LatLngObj";
 import { Marker, Popup, useMapEvents } from "react-leaflet";
 
-export default function MapClicker({
-	step,
-	setPickupCoord,
-	pickupCoord,
-	destCoord,
-	setDestCoord,
-}: {
-	setPickupCoord: React.Dispatch<React.SetStateAction<LatLngObj | null>>;
-	pickupCoord: LatLngObj | null;
-	destCoord: LatLngObj | null;
-	setDestCoord: React.Dispatch<React.SetStateAction<LatLngObj | null>>;
-	step: number;
-}) {
+export default function MapClicker() {
+	const step = useMyStore((s) => s.step);
+	const pickupCoord = useMyStore((s) => s.pickupCoord);
+	const destCoord = useMyStore((s) => s.destCoord);
+	const setPickupCoord = useMyStore((s) => s.setPickupCoord);
+	const setDestCoord = useMyStore((s) => s.setDestCoord);
+
 	const map = useMapEvents({
 		// todo: closure of step variable might be an issue later
 		click: (e) => {

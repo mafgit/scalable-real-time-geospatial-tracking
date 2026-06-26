@@ -1,21 +1,10 @@
+import { useMyStore } from "@/store/useMyStore";
 import { ViewType } from "@/types/ViewType";
 
-export default function RidePageTop({
-	view,
-	setView,
-}: {
-	view: ViewType;
-	setView: React.Dispatch<React.SetStateAction<ViewType>>;
-}) {
-	function changeViewToGlobal() {
-		if (view === "global") return;
-		setView("global");
-	}
-
-	function changeViewToRide() {
-		if (view === "ride") return;
-		setView("ride");
-	}
+export default function RidePageTop() {
+	const view = useMyStore((s) => s.view);
+	const changeViewToGlobal = useMyStore((s) => s.changeViewToGlobal);
+	const changeViewToRide = useMyStore((s) => s.changeViewToRide);
 
 	return (
 		<>

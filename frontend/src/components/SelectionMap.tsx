@@ -15,6 +15,7 @@ import { LatLngObj } from "@/types/LatLngObj";
 import { DriverIdLatLng } from "@/types/DriverIdLatLng";
 import { vehicleIcon } from "@/app/constants/leafletIcons";
 import { ViewType } from "@/types/ViewType";
+import { useMyStore } from "@/store/useMyStore";
 
 // @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl;
@@ -25,32 +26,19 @@ L.Icon.Default.mergeOptions({
 	shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
 
-export default function SelectionMap({
-	view,
-	userCoord,
-	pickupCoord,
-	destCoord,
-	setPickupCoord,
-	setDestCoord,
-	step,
-	refMap,
-	drivers,
-	leafletMapRef,
-}: {
-	view: ViewType;
-	userCoord: LatLngObj | null;
-	pickupCoord: LatLngObj | null;
-	destCoord: LatLngObj | null;
-	setPickupCoord: React.Dispatch<React.SetStateAction<LatLngObj | null>>;
-	setDestCoord: React.Dispatch<React.SetStateAction<LatLngObj | null>>;
-	step: number;
-	refMap: RefObject<Map<string, L.Marker>>;
-	drivers: DriverIdLatLng[];
-	leafletMapRef: RefObject<L.Map | null>;
-}) {
+export default function SelectionMap({}: {}) {
+	const _leafletMapRef = useMyStore((s) => s._leafletMapRef);
+	const userCoord = useMyStore((s) => s.userCoord);
+	const view = useMyStore((s) => s.view);
+	const step = useMyStore((s) => s.step);
+	const pickupCoord = useMyStore((s) => s.pickupCoord);
+	const destCoord = useMyStore((s) => s.destCoord);
+	const drivers = useMyStore((s) => s.drivers);
+	const _refMap = useMyStore((s) => s._refMap);
+
 	return userCoord ? (
 		<MapContainer
-			ref={leafletMapRef}
+			ref={_leafletMapRef}
 			center={userCoord}
 			zoom={26}
 			zoomControl={false}
@@ -63,13 +51,7 @@ export default function SelectionMap({
 
 			{view === "ride" ? (
 				<>
-					<MapClicker
-						destCoord={destCoord}
-						pickupCoord={pickupCoord}
-						setDestCoord={setDestCoord}
-						setPickupCoord={setPickupCoord}
-						step={step}
-					/>
+					<MapClicker />
 
 					{step > 1 && pickupCoord && (
 						<Circle
@@ -100,10 +82,10 @@ export default function SelectionMap({
 						ref={(element) => {
 							if (element) {
 								// mounted
-								refMap.current.set(d.driverId, element);
+								_refMap.current.set(d.driverId, element);
 							} else {
 								// unmounted
-								refMap.current.delete(d.driverId);
+								_refMap.current.delete(d.driverId);
 							}
 						}}
 						position={[d.lat, d.lng]} // todo: remove fake position
@@ -116,6 +98,6 @@ export default function SelectionMap({
 			)}
 		</MapContainer>
 	) : (
-		<p>Getting user location...</p>
+		<></>
 	);
 }
