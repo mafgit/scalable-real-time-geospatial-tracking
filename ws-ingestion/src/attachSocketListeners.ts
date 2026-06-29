@@ -1,7 +1,8 @@
 import type { Socket } from "socket.io";
 import { io } from "./createIOServer";
+import { pubClient } from "./redisClients";
 
-export function attachListeners() {
+export function attachSocketListeners() {
 	io.on("connection", (socket: Socket) => {
 		// console.log(`Socket ${socket.id} connected`);
 
@@ -18,16 +19,13 @@ export function attachListeners() {
 		socket.on(
 			"driver-ping",
 			(d: { driverId: string; lat: number; lng: number }) => {
-				const updated = {
-					lat: d.lat,
-					lng: d.lng,
-					timestamp: Date.now(),
-				};
-				// io.to("frontends").emit("driver-ping", {
-				// 	driverId: d.driverId,
-				// 	lat: d.lat,
-				// 	lng: d.lng,
-				// });
+                console.log('driver-ping received');
+                
+				pubClient.geoAdd("drivers:active", {
+					latitude: d.lat,
+					longitude: d.lng,
+					member: d.driverId,
+				});
 			},
 		);
 	});

@@ -48,14 +48,21 @@ async function simulate(
 				const newLat = centerLat + dx;
 				const newLng = centerLng + dy;
 
+				const socket = io("http://localhost:8080", {
+					query: { driverId: driverId },
+					forceNew: true,
+					multiplex: false,
+                    transports:['websocket']
+				});
+
+				socket.on("error", (err) => {
+					console.error(err);
+				});
+
 				drivers[driverId] = {
 					lat: newLat,
 					lng: newLng,
-					socket: io("http://localhost:5000", {
-						query: { driverId: driverId },
-						forceNew: true,
-						multiplex: false,
-					}),
+					socket: socket,
 				};
 
 				driver = drivers[driverId];

@@ -21,5 +21,9 @@
 			"path": "./drivers-simulator",
 		},
 	],
-	"settings": {},
+	"settings": {
+    		"terminal.integrated.tabs.title": "${workspaceFolderName}",
+    		"terminal.integrated.tabs.description": "${cwdFolder}",
+    		"terminal.integrated.cwd": "${workspaceFolder}"
+	},
 }

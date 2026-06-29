@@ -213,14 +213,15 @@ export const useMyStore = create<MyStoreType>((set, get) => ({
 							if (view === "ride") {
 								if (pickupCoord) {
 									if (
-										isPointWithinRadius(
-											{
-												lat: batch[key].lat,
-												lng: batch[key].lng,
-											},
-											pickupCoord,
-											radius,
-										)
+                                        true
+										// isPointWithinRadius(
+										// 	{
+										// 		lat: batch[key].lat,
+										// 		lng: batch[key].lng,
+										// 	},
+										// 	pickupCoord,
+										// 	radius,
+										// )
 									) {
 										deleteMarker = false;
 									}
@@ -253,14 +254,15 @@ export const useMyStore = create<MyStoreType>((set, get) => ({
 						} else {
 							if (
 								pickupCoord &&
-								isPointWithinRadius(
-									{
-										lat: batch[key].lat,
-										lng: batch[key].lng,
-									},
-									pickupCoord,
-									radius,
-								)
+                                true
+								// isPointWithinRadius(
+								// 	{
+								// 		lat: batch[key].lat,
+								// 		lng: batch[key].lng,
+								// 	},
+								// 	pickupCoord,
+								// 	radius,
+								// )
 							) {
 								addNew = true;
 							}

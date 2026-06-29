@@ -3,7 +3,7 @@ import { redisClient } from "./redisClient";
 import { BoundingBoxType } from "./schemas";
 
 export async function getNearbyDrivers(latitude: number, longitude: number) {
-	const data = await redisClient.geoSearch(
+	const data = await redisClient.geoSearchWith(
 		"drivers:active",
 		{ latitude, longitude },
 		{ radius: radius, unit: "m" },
@@ -18,7 +18,7 @@ export async function getDriversInBoundingBox({
 	widthm,
 	heightm,
 }: BoundingBoxType) {
-	const data = await redisClient.geoSearch(
+	const data = await redisClient.geoSearchWith(
 		"drivers:active",
 		{ latitude: centerlat, longitude: centerlng },
 		{ width: widthm, height: heightm, unit: "m" },
