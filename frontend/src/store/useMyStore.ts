@@ -3,6 +3,8 @@ import { LatLngObj } from "@/types/LatLngObj";
 import { ViewType } from "@/types/ViewType";
 import { create } from "zustand";
 import { io, type Socket } from "socket.io-client";
+import { radius } from "@/constants/radius";
+import { latLng } from "leaflet";
 
 interface MyStoreType {
 	pickupCoord: LatLngObj | null;
@@ -22,15 +24,18 @@ interface MyStoreType {
 	setUserCoord: (c: LatLngObj | null) => void;
 	setPickupCoord: (c: LatLngObj | null) => void;
 	setDestCoord: (c: LatLngObj | null) => void;
-	changeViewToGlobal: () => void;
+	changeViewToGlobal: () => Promise<void>;
 	changeViewToRide: () => void;
 	requestUserCoord: () => void;
 	moveBackToStep1: () => void;
-	moveForwardToStep2: (pickupCoord: LatLngObj) => void;
+	moveForwardToStep2: (pickupCoord: LatLngObj) => Promise<void>;
 	moveForwardToStep3: (pickupCoord: LatLngObj) => void;
 	moveToNextStep: () => void;
 	moveBackToStep2: () => void;
 	moveToPrevStep: () => void;
+	attachDriverPingBatchListener: () => void;
+	clearStepsMarkersDrivers: () => void;
+	socketConnectAndJoin: () => void;
 }
 
 export const useMyStore = create<MyStoreType>((set, get) => ({
@@ -41,7 +46,9 @@ export const useMyStore = create<MyStoreType>((set, get) => ({
 	view: "ride",
 	drivers: [],
 
-	_socket: { current: io("http://localhost:5000", { autoConnect: false }) },
+	_socket: {
+		current: io("http://localhost:5000", { autoConnect: false }),
+	},
 	_refMap: { current: new Map() },
 	_leafletMapRef: { current: null },
 	_seenDriverIds: { current: new Set() },
@@ -50,17 +57,69 @@ export const useMyStore = create<MyStoreType>((set, get) => ({
 	setUserCoord: (c: LatLngObj | null) => set({ userCoord: c }),
 	setDestCoord: (c: LatLngObj | null) => set({ destCoord: c }),
 	setPickupCoord: (c: LatLngObj | null) => set({ pickupCoord: c }),
-	// setView: (v: ViewType) => set({ view: v }),
-	changeViewToGlobal: () => {
-		const view = get().view;
+
+	changeViewToGlobal: async () => {
+		const {
+			view,
+			clearStepsMarkersDrivers,
+			attachDriverPingBatchListener,
+			_leafletMapRef,
+			_seenDriverIds,
+		} = get();
 		if (view === "global") return;
-		set({ view: "global" });
+		if (_leafletMapRef.current) {
+			try {
+				clearStepsMarkersDrivers();
+				const bounds = _leafletMapRef.current.getBounds();
+				const sw = bounds.getSouthWest();
+				const ne = bounds.getNorthEast();
+				const center = bounds.getCenter();
+
+				const heightM = _leafletMapRef.current.distance(
+					latLng(sw.lat, center.lng),
+					latLng(ne.lat, center.lng),
+				);
+				const widthM = _leafletMapRef.current.distance(
+					latLng(center.lat, sw.lng),
+					latLng(center.lat, ne.lng),
+				);
+				const res = await fetch(
+					`http://localhost:5000/drivers/bounding-box?centerlat=${center.lat}&centerlng=${center.lng}&widthm=${widthM}&heightm=${heightM}`,
+				);
+				const data = await res.json();
+
+				set({
+					drivers: Object.entries(data.drivers).map((x) => ({
+						...(x[1] as LatLngObj),
+						driverId: x[0],
+					})),
+				});
+
+				_seenDriverIds.current = new Set(Object.keys(data.drivers));
+
+				set({ view: "global" });
+
+				attachDriverPingBatchListener();
+			} catch {
+				alert("There was an error");
+			}
+		}
 	},
+
 	changeViewToRide: () => {
-		const view = get().view;
+		const { view, clearStepsMarkersDrivers } = get();
 		if (view === "ride") return;
+		clearStepsMarkersDrivers();
 		set({ view: "ride" });
 	},
+
+	clearStepsMarkersDrivers: () => {
+		const { _refMap, _seenDriverIds } = get();
+		set({ step: 1, pickupCoord: null, destCoord: null, drivers: [] });
+		_refMap.current.clear();
+		_seenDriverIds.current.clear();
+	},
+
 	requestUserCoord: () => {
 		if (typeof window === "undefined" || !navigator.geolocation) return;
 
@@ -80,12 +139,21 @@ export const useMyStore = create<MyStoreType>((set, get) => ({
 			},
 		);
 	},
-	moveForwardToStep2: async (pickupCoord: LatLngObj) => {
-		const { _seenDriverIds, _socket, _refMap, _leafletMapRef, drivers } =
-			get();
-		if (!_socket.current.connected) _socket.current.connect();
 
-		// initial getting of drivers
+	socketConnectAndJoin: () => {
+		const { _socket } = get();
+		if (!_socket.current.connected) _socket.current.connect();
+		_socket.current.emit("join-frontends");
+	},
+
+	moveForwardToStep2: async (pickupCoord: LatLngObj) => {
+		const {
+			_seenDriverIds,
+			_leafletMapRef,
+			attachDriverPingBatchListener,
+		} = get();
+
+		// initial getting of in-radius drivers
 		try {
 			const res = await fetch(
 				`http://localhost:5000/drivers/nearby?lat=${pickupCoord!.lat}&lng=${pickupCoord!.lng}`,
@@ -99,51 +167,7 @@ export const useMyStore = create<MyStoreType>((set, get) => ({
 				})),
 			});
 			_seenDriverIds.current = new Set(Object.keys(data.drivers));
-
-			// web_socket
-			_socket.current.emit("join-frontends");
-
-			_socket.current.on(
-				"driver-ping-batch",
-				(batch: Record<string, LatLngObj>, expired: string[]) => {
-					// todo: frontend filter based on radius because it receives drivers of full region
-					console.log("Received driver-ping-batch");
-
-					let oldDrivers = [...drivers]; // copy
-					let changeState = false; // just a flag whether to call setDrivers([]) to avoid setting state again if not changed
-
-					if (expired) {
-						const expiredSet = new Set(expired);
-						oldDrivers = oldDrivers.filter((d) => {
-							if (!expiredSet.has(d.driverId)) {
-								return true;
-							} else {
-								changeState = true;
-								return false;
-							}
-						});
-					}
-
-					for (const key in batch) {
-						if (_seenDriverIds.current.has(key)) {
-							const marker = _refMap.current.get(key);
-
-							if (marker) {
-								marker.setLatLng([
-									batch[key].lat,
-									batch[key].lng,
-								]);
-							}
-						} else {
-							_seenDriverIds.current.add(key);
-							oldDrivers.push({ ...batch[key], driverId: key });
-							changeState = true;
-						}
-					}
-
-					if (changeState) set({ drivers: oldDrivers });
-				},
-			);
+			attachDriverPingBatchListener();
 
 			set({ step: 2 });
 			_leafletMapRef.current?.setZoom(15);
@@ -152,9 +176,131 @@ export const useMyStore = create<MyStoreType>((set, get) => ({
 		}
 	},
 
+	attachDriverPingBatchListener: () => {
+		const {
+			_socket,
+			drivers,
+			_seenDriverIds,
+			_refMap,
+			socketConnectAndJoin,
+		} = get();
+
+		socketConnectAndJoin();
+
+		_socket.current.off("driver-ping-batch");
+
+		_socket.current.on(
+			"driver-ping-batch",
+			(batch: Record<string, LatLngObj>, expired: string[]) => {
+				const { view, pickupCoord } = get(); // get non-stale view on each ping
+				console.log("Received driver-ping-batch", view);
+
+				let oldDrivers = [...drivers]; // copy
+				let changeState = false; // just a flag whether to call setDrivers([]) to avoid setting state again if not changed
+
+				// for filtering away
+				let expiredSet = new Set(expired);
+				let gotOutOfBoundSet = new Set();
+
+				// processing new batch of pings
+				for (const key in batch) {
+					if (_seenDriverIds.current.has(key)) {
+						const marker = _refMap.current.get(key);
+
+						if (marker) {
+							let deleteMarker = true;
+
+							if (view === "ride") {
+								if (pickupCoord) {
+									if (
+										isPointWithinRadius(
+											{
+												lat: batch[key].lat,
+												lng: batch[key].lng,
+											},
+											pickupCoord,
+											radius,
+										)
+									) {
+										deleteMarker = false;
+									}
+								}
+							} else {
+								// isPointInPolygon({lat:batch[key].lat, lng:batch[key].lng}, [])
+								deleteMarker = false;
+							}
+
+							if (!deleteMarker) {
+								marker.setLatLng([
+									batch[key].lat,
+									batch[key].lng,
+								]);
+							} else {
+								// delete, if present in oldDrivers, and seenDriverIds
+								gotOutOfBoundSet.add(key); // to filter away out of bound and expired in one pass outside
+								_refMap.current.delete(key);
+								_seenDriverIds.current.delete(key);
+							}
+						}
+					} else {
+						// add new driver
+
+						let addNew = false;
+						if (view === "global") {
+							// if (isPointInPolygon({lat:batch[key].lat, lng:batch[key].lng}, [])) {
+							addNew = true;
+							// }
+						} else {
+							if (
+								pickupCoord &&
+								isPointWithinRadius(
+									{
+										lat: batch[key].lat,
+										lng: batch[key].lng,
+									},
+									pickupCoord,
+									radius,
+								)
+							) {
+								addNew = true;
+							}
+						}
+
+						if (addNew) {
+							_seenDriverIds.current.add(key);
+							oldDrivers.push({
+								...batch[key],
+								driverId: key,
+							});
+							changeState = true;
+						}
+					}
+				}
+
+				// filtering away those who got out of bound or have expired
+				oldDrivers = oldDrivers.filter((d) => {
+					if (
+						!gotOutOfBoundSet.has(d.driverId) &&
+						!expiredSet.has(d.driverId)
+					) {
+						return true;
+					}
+
+					changeState = true;
+					return false;
+				});
+
+				console.log(changeState);
+
+				if (changeState) set({ drivers: oldDrivers });
+			},
+		);
+	},
+
 	moveForwardToStep3: (destCoord: LatLngObj) => {
 		set({ step: 3 });
 	},
+
 	moveBackToStep1: () => {
 		set({
 			step: 1,
@@ -182,6 +328,7 @@ export const useMyStore = create<MyStoreType>((set, get) => ({
 			}
 		}
 	},
+
 	moveBackToStep2: () => {
 		set({ step: 2 });
 	},

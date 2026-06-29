@@ -1,15 +1,7 @@
-import { Server, Socket } from "socket.io";
-import type http from "node:http";
-import * as data from "./data.js";
+import type { Socket } from "socket.io";
+import { io } from "./createIOServer";
 
-export default function socketSetup(httpServer: http.Server) {
-	const io = new Server(httpServer, {
-		cors: {
-			origin: "*",
-			methods: ["GET", "POST"],
-		},
-	});
-
+export function attachListeners() {
 	io.on("connection", (socket: Socket) => {
 		// console.log(`Socket ${socket.id} connected`);
 
@@ -18,16 +10,15 @@ export default function socketSetup(httpServer: http.Server) {
 			socket.join("frontends");
 		});
 
-		// frontend -> backend
 		socket.on("leave-frontends", () => {
 			socket.leave("frontends");
 		});
 
-		// driver driver ping -> backend: backend broadcasts to room of the region
+		// driver ping -> ws: ws publishes to redis channel for worker
 		socket.on(
 			"driver-ping",
 			(d: { driverId: string; lat: number; lng: number }) => {
-				data.drivers[d.driverId] = {
+				const updated = {
 					lat: d.lat,
 					lng: d.lng,
 					timestamp: Date.now(),
@@ -40,6 +31,4 @@ export default function socketSetup(httpServer: http.Server) {
 			},
 		);
 	});
-
-	return io;
 }

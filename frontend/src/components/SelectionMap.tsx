@@ -9,12 +9,9 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import MapClicker from "./MapClicker";
-import { RefObject } from "react";
 import "leaflet/dist/leaflet.css";
-import { LatLngObj } from "@/types/LatLngObj";
 import { DriverIdLatLng } from "@/types/DriverIdLatLng";
 import { vehicleIcon } from "@/app/constants/leafletIcons";
-import { ViewType } from "@/types/ViewType";
 import { useMyStore } from "@/store/useMyStore";
 
 // @ts-ignore
@@ -35,6 +32,8 @@ export default function SelectionMap({}: {}) {
 	const destCoord = useMyStore((s) => s.destCoord);
 	const drivers = useMyStore((s) => s.drivers);
 	const _refMap = useMyStore((s) => s._refMap);
+
+	const shouldRenderMarkers = view === "global" || step > 1;
 
 	return userCoord ? (
 		<MapContainer
@@ -74,7 +73,7 @@ export default function SelectionMap({}: {}) {
 				<></>
 			)}
 
-			{step > 1 ? (
+			{shouldRenderMarkers ? (
 				drivers.map((d: DriverIdLatLng) => (
 					<Marker
 						icon={vehicleIcon}
@@ -88,7 +87,7 @@ export default function SelectionMap({}: {}) {
 								_refMap.current.delete(d.driverId);
 							}
 						}}
-						position={[d.lat, d.lng]} // todo: remove fake position
+						position={[d.lat, d.lng]} // bug: on view change or any state change that rerenders this, position will reset to this
 					>
 						<Popup>Driver ID: {d.driverId}</Popup>
 					</Marker>

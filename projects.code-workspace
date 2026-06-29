@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"name": "frontend",
+			"path": "./frontend",
+		},
+		{
+			"name": "api",
+			"path": "./api",
+		},
+		{
+			"name": "ws-ingestion",
+			"path": "./ws-ingestion",
+		},
+		{
+			"name": "workers",
+			"path": "./workers",
+		},
+		{
+			"name": "drivers-simulator",
+			"path": "./drivers-simulator",
+		},
+	],
+	"settings": {},
+}

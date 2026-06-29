@@ -6,11 +6,11 @@ Efficient live updating of hundreds of marker locations over websocket connectio
 
 <img src="./readme-imgs/1.png" style="border-radius: 8px;"/>
 
-## Architecture
+<!-- ## Architecture
 
 Basic → Advanced (in plan)
 
-<img src="./readme-imgs/scalable-real-time-geospatial-tracking.drawio.svg" style="border-radius: 8px;"/>
+<img src="./readme-imgs/scalable-real-time-geospatial-tracking.drawio.svg" style="border-radius: 8px;"/> -->
 
 ## Tech Stack
 
