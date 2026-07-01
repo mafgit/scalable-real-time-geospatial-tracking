@@ -1,44 +1,34 @@
 import { LatLngObj } from "@/types/LatLngObj";
-import type L from "leaflet";
 
-export function getScreenBoundingBox(map: L.Map) {
-	const bounds = map.getBounds();
-	const sw = bounds.getSouthWest();
-	const ne = bounds.getNorthEast();
-	const center = bounds.getCenter();
-
-	const heightM = map.distance(
-		{ lat: sw.lat, lng: center.lng },
-		{ lat: ne.lat, lng: center.lng },
-	);
-	const widthM = map.distance(
-		{ lat: center.lat, lng: sw.lng },
-		{ lat: center.lat, lng: ne.lng },
-	);
-
-	return { centerLat: center.lat, centerLng: center.lng, widthM, heightM };
-}
+type RedisDriversType = Promise<{
+	drivers: {
+		member: string;
+		coordinates: { latitude: number; longitude: number };
+	}[];
+}>;
 
 export async function fetchDriversInBoundingBox({
 	centerLat,
 	centerLng,
-	widthM,
-	heightM,
+	widthKm,
+	heightKm,
 }: {
 	centerLat: number;
 	centerLng: number;
-	widthM: number;
-	heightM: number;
-}) {
+	widthKm: number;
+	heightKm: number;
+}): RedisDriversType {
 	const res = await fetch(
-		`http://localhost:5000/drivers/bounding-box?centerlat=${centerLat}&centerlng=${centerLng}&widthm=${widthM}&heightm=${heightM}`,
+		`http://localhost:5000/drivers/bounding-box?centerlat=${centerLat}&centerlng=${centerLng}&widthkm=${widthKm}&heightkm=${heightKm}`,
 	);
 	const data = await res.json();
 
 	return data;
 }
 
-export async function fetchNearbyDrivers(pickupCoord: LatLngObj) {
+export async function fetchNearbyDrivers(
+	pickupCoord: LatLngObj,
+): RedisDriversType {
 	const res = await fetch(
 		`http://localhost:5000/drivers/nearby?lat=${pickupCoord.lat}&lng=${pickupCoord.lng}`,
 	);

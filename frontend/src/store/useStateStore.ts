@@ -5,9 +5,9 @@ import mapManager from "@/managers/mapManager";
 import {
 	fetchDriversInBoundingBox,
 	fetchNearbyDrivers,
-	getScreenBoundingBox,
 } from "@/utils/mapUtils";
 import { StateStoreType } from "@/types/StateStoreType";
+import { DriverPing } from "@/types/DriverPing";
 
 export const useStateStore = create<StateStoreType>((set, get) => ({
 	step: 1,
@@ -21,50 +21,47 @@ export const useStateStore = create<StateStoreType>((set, get) => ({
 	setDestCoord: (c: LatLngObj | null) => set({ destCoord: c }),
 	setPickupCoord: (c: LatLngObj | null) => set({ pickupCoord: c }),
 	setUserCoord: (c: LatLngObj | null) => set({ userCoord: c }),
+	setDrivers: (drivers: DriverPing[]) => set({ drivers }),
 
 	changeViewToGlobal: async () => {
-		const { view, clearStepsMarkersDrivers } = get();
+		const { view } = get();
 		if (view === "GLOBAL") return;
-
-		console.log(mapManager.leafletMap);
 
 		if (mapManager.leafletMap && typeof window !== "undefined") {
 			try {
-				clearStepsMarkersDrivers();
+				mapManager.seenDriverIds.clear();
 
-				const bbox = getScreenBoundingBox(mapManager.leafletMap);
+				const { centerLat, centerLng, widthKm, heightKm } =
+					mapManager.getScreenBoundingBox();
 
-				const data = await fetchDriversInBoundingBox(bbox);
-
-				set({
-					drivers: Object.entries(data.drivers).map((x) => ({
-						...(x[1] as LatLngObj),
-						driverId: x[0],
-					})),
+				const data = await fetchDriversInBoundingBox({
+					centerLat,
+					centerLng,
+					widthKm,
+					heightKm,
 				});
 
-				mapManager.seenDriverIds = new Set(Object.keys(data.drivers));
+				const driverIds: string[] = [];
 
-				set({ view: "GLOBAL" });
+				const drivers = data.drivers.map((d) => {
+					driverIds.push(d.member);
 
-				socketManager.attachDriverPingBatchListener();
+					return {
+						member: d.member,
+						latitude: d.coordinates.latitude,
+						longitude: d.coordinates.longitude,
+					};
+				});
+
+				mapManager.seenDriverIds = new Set(driverIds);
+
+				set({ view: "GLOBAL", drivers });
+
+				socketManager.attachDriverPingBatchListener("GLOBAL");
 			} catch {
 				alert("There was an error");
 			}
 		}
-	},
-
-	changeViewToRide: () => {
-		const { view, clearStepsMarkersDrivers } = get();
-		if (view === "RIDE") return;
-		clearStepsMarkersDrivers();
-		set({ view: "RIDE" });
-	},
-
-	clearStepsMarkersDrivers: () => {
-		set({ step: 1, pickupCoord: null, destCoord: null, drivers: [] });
-		mapManager.driverIdToMarkerRefMap.clear();
-		mapManager.seenDriverIds.clear();
 	},
 
 	moveForwardToStep2: async (pickupCoord: LatLngObj) => {
@@ -72,21 +69,40 @@ export const useStateStore = create<StateStoreType>((set, get) => ({
 		try {
 			const data = await fetchNearbyDrivers(pickupCoord);
 
-			set({
-				drivers: Object.entries(data.drivers).map((x) => ({
-					...(x[1] as LatLngObj),
-					driverId: x[0],
-				})),
+			const driverIds: string[] = [];
+
+			const drivers = data.drivers.map((d) => {
+				driverIds.push(d.member);
+
+				return {
+					member: d.member,
+					latitude: d.coordinates.latitude, // todo: coordinates is optional in api interface, although redis isnt saving any driver without coordinates?
+					longitude: d.coordinates.longitude,
+				};
 			});
 
 			mapManager.seenDriverIds = new Set(Object.keys(data.drivers));
-			socketManager.attachDriverPingBatchListener();
 
-			set({ step: 2 });
+			set({ drivers, step: 2 });
+
+			socketManager.attachDriverPingBatchListener("RIDE");
+
 			mapManager.leafletMap?.setZoom(15);
-		} catch {
+		} catch (e) {
+			console.error(e);
 			alert("Backend service might be down");
 		}
+	},
+
+	changeViewToRide: () => {
+		const { view, clearSteps } = get();
+		if (view === "RIDE") return;
+		clearSteps();
+		set({ view: "RIDE" });
+	},
+
+	clearSteps: () => {
+		set({ step: 1, pickupCoord: null, destCoord: null });
 	},
 
 	moveForwardToStep3: (destCoord: LatLngObj) => {
@@ -100,8 +116,7 @@ export const useStateStore = create<StateStoreType>((set, get) => ({
 			drivers: [],
 		});
 		mapManager.seenDriverIds.clear();
-		mapManager.driverIdToMarkerRefMap.clear();
-		socketManager.socket.emit("leave-frontends", "GLOBAL");
+		socketManager.socket.emit("leave-frontend-regions", "GLOBAL");
 		socketManager.socket.off("driver-ping");
 	},
 

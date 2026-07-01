@@ -10,11 +10,11 @@ import {
 import L from "leaflet";
 import MapClicker from "./MapClicker";
 import "leaflet/dist/leaflet.css";
-import { DriverIdLatLng } from "@/types/DriverIdLatLng";
+import { DriverPing } from "@/types/DriverPing";
 import { vehicleIcon } from "@/app/constants/leafletIcons";
 import { useStateStore } from "@/store/useStateStore";
-import { useEffect, useRef } from "react";
 import mapManager from "@/managers/mapManager";
+import MapMover from "./MapMover";
 
 // @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl;
@@ -72,31 +72,31 @@ export default function SelectionMap() {
 					)}
 				</>
 			) : (
-				<></>
+				<MapMover />
 			)}
 
 			{shouldRenderMarkers ? (
-				drivers.map((d: DriverIdLatLng) => (
+				drivers.map((d: DriverPing) => (
 					<Marker
 						icon={vehicleIcon}
-						key={d.driverId}
+						key={d.member}
 						ref={(element) => {
 							if (element) {
 								// mounted
-								mapManager.driverIdToMarkerRefMap.set(
-									d.driverId,
+								mapManager.memberToMarkerRefMap.set(
+									d.member,
 									element,
 								);
 							} else {
 								// unmounted
-								mapManager.driverIdToMarkerRefMap.delete(
-									d.driverId,
+								mapManager.memberToMarkerRefMap.delete(
+									d.member,
 								);
 							}
 						}}
-						position={[d.lat, d.lng]} // bug: on view change or any state change that rerenders this, position will reset to this
+						position={[d.latitude, d.longitude]} // bug: on view change or any state change that rerenders this, position will reset to this
 					>
-						<Popup>Driver ID: {d.driverId}</Popup>
+						<Popup>Driver ID: {d.member}</Popup>
 					</Marker>
 				))
 			) : (

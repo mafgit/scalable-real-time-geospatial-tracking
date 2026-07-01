@@ -1,28 +1,30 @@
-import { radius } from "./constants";
+import { RADIUS } from "./constants";
 import { redisClient } from "./redisClient";
 import { BoundingBoxType } from "./schemas";
 
 export async function getNearbyDrivers(latitude: number, longitude: number) {
-	const data = await redisClient.geoSearchWith(
+	const drivers = await redisClient.geoSearchWith(
 		"drivers:active",
 		{ latitude, longitude },
-		{ radius: radius, unit: "m" },
+		{ radius: RADIUS, unit: "m" },
 		["WITHCOORD"],
 	);
-	return data;
+
+	return drivers;
 }
 
 export async function getDriversInBoundingBox({
 	centerlat,
 	centerlng,
-	widthm,
-	heightm,
+	widthkm,
+	heightkm,
 }: BoundingBoxType) {
-	const data = await redisClient.geoSearchWith(
+	const drivers = await redisClient.geoSearchWith(
 		"drivers:active",
 		{ latitude: centerlat, longitude: centerlng },
-		{ width: widthm, height: heightm, unit: "m" },
+		{ width: widthkm, height: heightkm, unit: "km" },
 		["WITHCOORD"],
 	);
-	return data;
+    
+	return drivers;
 }

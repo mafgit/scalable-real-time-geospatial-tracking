@@ -13,8 +13,8 @@ export const LatLngSchema = z.object({
 export const BoundingBoxSchema = z.object({
 	centerlat: LatSchema,
 	centerlng: LatSchema,
-	widthm: z.coerce.number().positive(),
-	heightm: z.coerce.number().positive(),
+	widthkm: z.coerce.number().positive(),
+	heightkm: z.coerce.number().positive(),
 });
 
 export type BoundingBoxType = z.infer<typeof BoundingBoxSchema>;

@@ -6,7 +6,7 @@ export function attachSocketListeners() {
 	io.on("connection", (socket: Socket) => {
 		// console.log(`Socket ${socket.id} connected`);
 
-		socket.on("join-frontends", (regionIds: string[]) => {
+		socket.on("join-frontend-regions", (regionIds: string[]) => {
 			const rooms = regionIds.map(
 				(regionId) => `room:frontends:${regionId}`,
 			);
@@ -14,7 +14,7 @@ export function attachSocketListeners() {
 			socket.join(rooms);
 		});
 
-		socket.on("leave-frontends", (regionIds: string[]) => {
+		socket.on("leave-frontend-regions", (regionIds: string[]) => {
 			Promise.all(
 				regionIds.map((regionId) =>
 					socket.leave(`room:frontends:${regionId}`),

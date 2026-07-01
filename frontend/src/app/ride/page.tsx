@@ -4,6 +4,7 @@ import RidePageTop from "@/components/RidePageTop";
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { useStateStore } from "@/store/useStateStore";
+import socketManager from "@/managers/socketManager";
 
 const SelectionMapNoSSR = dynamic(() => import("@/components/SelectionMap"), {
 	ssr: false,
@@ -31,6 +32,12 @@ export default function page() {
 				maximumAge: 60000, // accept cached if within this milliseconds old
 			},
 		);
+
+		return () => {
+			if (socketManager.socket.connected) {
+				socketManager.socket.disconnect();
+			}
+		};
 	}, []);
 
 	return (

@@ -1,4 +1,4 @@
-import { DriverIdLatLng } from "./DriverIdLatLng";
+import { DriverPing } from "./DriverPing";
 import { LatLngObj } from "./LatLngObj";
 import { ViewType } from "./ViewType";
 
@@ -7,10 +7,11 @@ export interface StateStoreType {
 	destCoord: LatLngObj | null;
 	userCoord: LatLngObj | null;
 	view: ViewType;
-	drivers: DriverIdLatLng[];
+	drivers: DriverPing[];
 	step: number;
 
 	// actions
+	setDrivers: (drivers: DriverPing[]) => void;
 	setPickupCoord: (c: LatLngObj | null) => void;
 	setDestCoord: (c: LatLngObj | null) => void;
 	setUserCoord: (c: LatLngObj | null) => void;
@@ -22,5 +23,5 @@ export interface StateStoreType {
 	moveToNextStep: () => void;
 	moveBackToStep2: () => void;
 	moveToPrevStep: () => void;
-	clearStepsMarkersDrivers: () => void;
+	clearSteps: () => void;
 }
