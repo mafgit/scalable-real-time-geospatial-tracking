@@ -1,0 +1,50 @@
+services:
+    frontend_service:
+      image: tracker-frontend:latest
+      build:
+        context: ./frontend
+        dockerfile: dockerfile
+        args:
+          - NEXT_PUBLIC_API_SERVICE_URL=${NEXT_PUBLIC_API_SERVICE_URL}
+          - NEXT_PUBLIC_WS_INGESTION_SERVICE_URL=${NEXT_PUBLIC_WS_INGESTION_SERVICE_URL}
+      depends_on:
+        - api_service
+        - ws_ingestion_service
+
+    api_service:
+      image: tracker-api:latest
+      build: ./api
+      environment:
+        - REDIS_URL=redis://localhost:6379/
+      depends_on:
+        - redis_service
+
+    ws_ingestion_service:
+      image: tracker-ws-ingestion:latest
+      build: ./ws-ingestion
+      environment:
+        - REDIS_URL=redis://localhost:6379/
+      depends_on:
+        - redis_service
+
+    drivers_simulator_service:
+      image: tracker-drivers-simulator:latest
+      build: ./drivers-simulator
+      environment:
+        - REDIS_URL=redis://localhost:6379/
+      depends_on:
+        - ws_ingestion_service
+
+
+    workers_service:
+      image: tracker-workers:latest
+      build: ./workers
+      environment:
+        - REDIS_URL=redis://localhost:6379/
+      depends_on:
+        - redis_service
+
+    redis_service:
+      image: redis:8.8-alpine
+      ports:
+        - "6379:6379"

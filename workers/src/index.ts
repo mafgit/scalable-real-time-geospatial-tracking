@@ -1,5 +1,6 @@
 import { initRedis } from "./redisClient";
 import ticker from "./ticker";
+import 'dotenv/config'
 
 main();
 

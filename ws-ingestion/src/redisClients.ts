@@ -2,7 +2,7 @@ import { createClient } from "redis";
 import { io } from "./createIOServer";
 import { createAdapter } from "@socket.io/redis-adapter";
 
-export const pubClient = createClient({ url: "redis://localhost:6379/" });
+export const pubClient = createClient({ url: process.env.REDIS_URL });
 export const subClient = pubClient.duplicate();
 
 export async function createRedisPubSubClients() {

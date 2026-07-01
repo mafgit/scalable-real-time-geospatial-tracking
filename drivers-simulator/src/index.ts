@@ -48,7 +48,7 @@ async function simulate({
 				const newLat = centerLat + dx;
 				const newLng = centerLng + dy;
 
-				const socket = io("http://localhost:8080", {
+				const socket = io(process.env.WS_INGESTION_SERVICE_URL, {
 					query: { driverId: driverId },
 					forceNew: true,
 					multiplex: false,

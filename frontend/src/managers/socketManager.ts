@@ -4,8 +4,9 @@ import { ViewType } from "@/types/ViewType";
 import { io } from "socket.io-client";
 import mapManager from "./mapManager";
 
+
 const socketManager = {
-	socket: io("http://localhost:8080", {
+	socket: io(process.env.NEXT_PUBLIC_WS_INGESTION_SERVICE_URL, {
 		autoConnect: false,
 		transports: ["websocket"],
 	}),
