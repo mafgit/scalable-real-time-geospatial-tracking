@@ -1,7 +1,6 @@
 import { useStateStore } from "@/store/useStateStore";
-import { getScreenBoundingBox } from "@/utils/mapUtils";
-import { useEffect, useRef } from "react";
-import { Marker, Popup, useMapEvents } from "react-leaflet";
+import { useRef } from "react";
+import { useMapEvents } from "react-leaflet";
 
 export default function MapMover() {
 	const moveRefTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -15,7 +14,9 @@ export default function MapMover() {
 			moveRefTimeout.current = setTimeout(() => {
 				// console.log(map.getZoom());
 				// console.log(getScreenBoundingBox(map));
-			}, 1500);
+
+				useStateStore.getState().onMapMove();
+			}, 1200);
 		},
 	});
 

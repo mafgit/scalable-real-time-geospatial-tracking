@@ -24,9 +24,13 @@ export const useStateStore = create<StateStoreType>((set, get) => ({
 	setDrivers: (drivers: DriverPing[]) => set({ drivers }),
 
 	changeViewToGlobal: async () => {
-		const { view } = get();
+		const { view, onMapMove } = get();
 		if (view === "GLOBAL") return;
 
+		onMapMove();
+	},
+
+	async onMapMove() {
 		if (mapManager.leafletMap && typeof window !== "undefined") {
 			try {
 				mapManager.seenDriverIds.clear();
@@ -81,7 +85,7 @@ export const useStateStore = create<StateStoreType>((set, get) => ({
 				};
 			});
 
-			mapManager.seenDriverIds = new Set(Object.keys(data.drivers));
+			mapManager.seenDriverIds = new Set(driverIds);
 
 			set({ drivers, step: 2 });
 

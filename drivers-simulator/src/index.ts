@@ -1,13 +1,5 @@
 import { io, type Socket } from "socket.io-client";
 
-// const socket = socket.on("connect", () => {
-// 	console.log("Driver simulator connected to backend websocket");
-// });
-
-// socket.on("disconnect", () => {
-// 	console.log("Driver simulator disconnected from backend websocket");
-// });
-
 let drivers: Record<
 	string,
 	{
@@ -27,12 +19,17 @@ process.on("SIGINT", () => {
 	process.exit(0);
 });
 
-async function simulate(
-	numDrivers: number,
-	centerLat: number,
-	centerLng: number,
-	r: number,
-) {
+async function simulate({
+	numDrivers,
+	centerLat,
+	centerLng,
+	changeInLatOrLng,
+}: {
+	numDrivers: number;
+	centerLat: number;
+	centerLng: number;
+	changeInLatOrLng: number;
+}) {
 	console.log(`Simulating ${numDrivers} drivers`);
 
 	drivers = {};
@@ -42,8 +39,11 @@ async function simulate(
 			const driverId = "driver-" + d;
 
 			if (!(driverId in drivers)) {
-				const dx = Math.random() * r * 2 - r;
-				const dy = Math.random() * r * 2 - r;
+				// creating driver at random locations
+				const dx =
+					Math.random() * changeInLatOrLng * 2 - changeInLatOrLng;
+				const dy =
+					Math.random() * changeInLatOrLng * 2 - changeInLatOrLng;
 
 				const newLat = centerLat + dx;
 				const newLng = centerLng + dy;
@@ -52,11 +52,19 @@ async function simulate(
 					query: { driverId: driverId },
 					forceNew: true,
 					multiplex: false,
-                    transports:['websocket']
+					transports: ["websocket"],
+					reconnection: true,
+					reconnectionAttempts: Infinity,
+					reconnectionDelay: 1000,
+					timeout: 5000,
 				});
 
-				socket.on("error", (err) => {
-					console.error(err);
+				socket.on("connect_error", (err) => {
+					console.error("Websocket connection error");
+				});
+
+				socket.on("disconnect", (reason) => {
+					console.log("Socket disconnected", reason);
 				});
 
 				drivers[driverId] = {
@@ -67,6 +75,7 @@ async function simulate(
 
 				driver = drivers[driverId];
 			} else {
+				// moving existing driver randomly
 				driver = drivers[driverId];
 				const dx = Math.random() * 0.00001 * 2 - 0.0001;
 				const dy = Math.random() * 0.00001 * 2 - 0.0001;
@@ -77,11 +86,14 @@ async function simulate(
 				driver.lng = newLng;
 			}
 
-			driver.socket.emit("driver-ping", {
-				driverId: driverId,
-				lat: drivers[driverId].lat,
-				lng: drivers[driverId].lng,
-			});
+			// emitting ping to ws-ingestion service
+			if (driver.socket.connected) {
+				driver.socket.emit("driver-ping", {
+					driverId: driverId,
+					lat: drivers[driverId].lat,
+					lng: drivers[driverId].lng,
+				});
+			}
 		}
 
 		await delay(Math.random() * 2000);
@@ -92,8 +104,13 @@ function delay(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function clamp(x: number, min: number, max: number) {
-	return Math.min(Math.max(x, max), min);
-}
+// function clamp(x: number, min: number, max: number) {
+// 	return Math.min(Math.max(x, max), min);
+// }
 
-simulate(50, 24.926, 67.1371, 0.1);
+simulate({
+	numDrivers: 50,
+	centerLat: 24.926,
+	centerLng: 67.1371,
+	changeInLatOrLng: 0.1,
+});

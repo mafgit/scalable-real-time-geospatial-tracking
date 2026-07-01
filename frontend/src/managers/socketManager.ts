@@ -10,7 +10,7 @@ const socketManager = {
 		transports: ["websocket"],
 	}),
 
-	regionsJoined: [],
+	regionsJoined: new Array<string>(),
 
 	connectIfNotConnected() {
 		if (!socketManager.socket.connected) socketManager.socket.connect();
@@ -23,7 +23,7 @@ const socketManager = {
 		const regionsToJoinSet = new Set(regionsToJoin);
 
 		const roomsToLeave: string[] = [];
-		const roomsToJoin: string[] = [];
+		const newRoomsToJoin: string[] = [];
 
 		regionsJoinedSet.forEach((r) => {
 			if (!regionsToJoinSet.has(r)) {
@@ -33,12 +33,13 @@ const socketManager = {
 
 		regionsToJoinSet.forEach((r) => {
 			if (!regionsJoinedSet.has(r)) {
-				roomsToJoin.push(r);
+				newRoomsToJoin.push(r);
 			}
 		});
 
 		socketManager.socket.emit("leave-frontend-regions", roomsToLeave);
-		socketManager.socket.emit("join-frontend-regions", roomsToJoin);
+		socketManager.socket.emit("join-frontend-regions", newRoomsToJoin);
+		socketManager.regionsJoined = regionsToJoin;
 	},
 
 	attachDriverPingBatchListener(view: ViewType) {

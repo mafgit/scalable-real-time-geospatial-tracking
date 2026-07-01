@@ -24,4 +24,5 @@ export interface StateStoreType {
 	moveBackToStep2: () => void;
 	moveToPrevStep: () => void;
 	clearSteps: () => void;
+	onMapMove: () => void;
 }
